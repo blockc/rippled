@@ -177,15 +177,22 @@ ConsensusImp::takePosition (int seq, std::shared_ptr<SHAMap> const& position)
     }
 }
 
-void
-ConsensusImp::visitStoredProposals (
-    std::function<void(LedgerProposal::ref)> const& f)
+std::vector <LedgerProposal::pointer>
+ConsensusImp::getStoredProposals (uint256 const& prevLedger)
 {
-    std::lock_guard <std::mutex> _(lock_);
 
-    for (auto const& it : storedProposals_)
-        for (auto const& prop : it.second)
-            f(prop);
+    std::vector <LedgerProposal::pointer> ret;
+
+    {
+        std::lock_guard <std::mutex> _(lock_);
+
+        for (auto const& it : storedProposals_)
+            for (auto const& prop : it.second)
+                if (prop->isPrevLedger (prevLedger))
+                    ret.push_back (prop);
+    }
+
+    return ret;
 }
 
 //==============================================================================

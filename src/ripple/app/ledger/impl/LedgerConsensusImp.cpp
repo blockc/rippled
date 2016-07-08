@@ -1707,36 +1707,36 @@ void LedgerConsensusImp::updateOurPositions ()
 
 void LedgerConsensusImp::playbackProposals ()
 {
-    _consensus.visitStoredProposals (
-        [this](LedgerProposal::ref proposal)
+    auto proposals = _consensus.getStoredProposals (_prevLedgerHash);
+
+    for (auto& proposal : proposals)
+    {
+        if (peerPosition (proposal))
         {
-            if (proposal->isPrevLedger (_prevLedgerHash) &&
-                peerPosition (proposal))
-            {
-                // Now that we know this proposal
-                // is useful, relay it
-                protocol::TMProposeSet prop;
+            // Now that we know this proposal
+            // is useful, relay it
+            protocol::TMProposeSet prop;
 
-                prop.set_proposeseq (
-                    proposal->getProposeSeq ());
-                prop.set_closetime (
-                    proposal->getCloseTime ().time_since_epoch().count());
+            prop.set_proposeseq (
+                proposal->getProposeSeq ());
+            prop.set_closetime (
+                proposal->getCloseTime ().time_since_epoch().count());
 
-                prop.set_currenttxhash (
-                    proposal->getCurrentHash().begin(), 256 / 8);
-                prop.set_previousledger (
-                    proposal->getPrevLedger().begin(), 256 / 8);
+            prop.set_currenttxhash (
+                proposal->getCurrentHash().begin(), 256 / 8);
+            prop.set_previousledger (
+                proposal->getPrevLedger().begin(), 256 / 8);
 
-                auto const pk = proposal->getPublicKey().slice();
-                prop.set_nodepubkey (pk.data(), pk.size());
+            auto const pk = proposal->getPublicKey().slice();
+            prop.set_nodepubkey (pk.data(), pk.size());
 
-                auto const sig = proposal->getSignature();
-                prop.set_signature (sig.data(), sig.size());
+            auto const sig = proposal->getSignature();
+            prop.set_signature (sig.data(), sig.size());
 
-                _app.overlay().relay (
-                    prop, proposal->getSuppressionID ());
-            }
-        });
+            _app.overlay().relay (
+                prop, proposal->getSuppressionID ());
+        }
+    }
 }
 
 void LedgerConsensusImp::closeLedger ()
