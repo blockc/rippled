@@ -47,8 +47,8 @@ public:
 
     virtual uint256 getLCL () = 0;
 
-    virtual void mapComplete (uint256 const& hash,
-        std::shared_ptr<SHAMap> const& map, bool acquired) = 0;
+    virtual void gotMap (uint256 const& hash,
+        std::shared_ptr<SHAMap> const& map) = 0;
 
     virtual void timerEntry () = 0;
 

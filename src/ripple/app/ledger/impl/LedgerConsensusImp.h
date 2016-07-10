@@ -129,10 +129,9 @@ public:
       @param map      the transaction set.
       @param acquired true if we have acquired the transaction set.
     */
-    void mapComplete (
+    void gotMap (
         uint256 const& hash,
-        std::shared_ptr<SHAMap> const& map,
-        bool acquired) override;
+        std::shared_ptr<SHAMap> const& map) override;
 
     /**
       On timer call the correct handler for each state.

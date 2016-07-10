@@ -374,6 +374,14 @@ uint256 LedgerConsensusImp::getLCL ()
     return _prevLedgerHash;
 }
 
+// Called when:
+// 1) We take our initial position
+// 2) We take a new position
+// 3) We acquire a position a validator took
+//
+// We store it, notify peers that we have it,
+// and update our tracking if any validators currently
+// propose it/
 void LedgerConsensusImp::mapCompleteInternal (
     uint256 const& hash,
     std::shared_ptr<SHAMap> const& map,
@@ -472,16 +480,15 @@ void LedgerConsensusImp::mapCompleteInternal (
     }
 }
 
-void LedgerConsensusImp::mapComplete (
+void LedgerConsensusImp::gotMap (
     uint256 const& hash,
-    std::shared_ptr<SHAMap> const& map,
-    bool acquired)
+    std::shared_ptr<SHAMap> const& map)
 {
     std::lock_guard<std::recursive_mutex> _(_lock);
 
     try
     {
-        mapCompleteInternal (hash, map, acquired);
+        mapCompleteInternal (hash, map, true);
     }
     catch (SHAMapMissingNode const& mn)
     {
