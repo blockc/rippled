@@ -846,6 +846,7 @@ std::shared_ptr<SHAMap> LedgerConsensusImp::getTransactionTree (
 bool LedgerConsensusImp::peerPosition (LedgerProposal::ref newPosition)
 {
     std::lock_guard<std::recursive_mutex> _(lock_);
+
     auto const peerID = newPosition->getPeerID ();
 
     if (newPosition->getPrevLedger() != mPrevLedgerHash)
