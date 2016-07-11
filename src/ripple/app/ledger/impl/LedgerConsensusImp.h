@@ -299,60 +299,60 @@ private:
     NetClock::time_point effectiveCloseTime(NetClock::time_point closeTime);
 
 private:
-    Application& _app;
-    ConsensusImp& _consensus;
-    InboundTransactions& _inboundTransactions;
-    LocalTxs& _localTX;
-    LedgerMaster& _ledgerMaster;
-    FeeVote& _feeVote;
-    std::recursive_mutex _lock;
+    Application& app_;
+    ConsensusImp& consensus_;
+    InboundTransactions& inboundTransactions_;
+    LocalTxs& localTX_;
+    LedgerMaster& ledgerMaster_;
+    FeeVote& feeVote_;
+    std::recursive_mutex lock_;
 
-    State _state;
+    State state_;
 
     // The wall time this ledger closed
-    NetClock::time_point _closeTime;
+    NetClock::time_point closeTime_;
 
-    uint256 _prevLedgerHash;
-    uint256 _acquiringLedger;
+    uint256 prevLedgerHash_;
+    uint256 acquiringLedger_;
 
-    std::shared_ptr<Ledger const> _previousLedger;
-    LedgerProposal::pointer _ourPosition;
-    PublicKey _valPublic;
-    SecretKey _valSecret;
-    bool _proposing, _validating, _haveCorrectLCL, _consensusFail;
+    std::shared_ptr<Ledger const> previousLedger_;
+    LedgerProposal::pointer ourPosition_;
+    PublicKey valPublic_;
+    SecretKey valSecret_;
+    bool proposing_, validating_, haveCorrectLCL_, consensus_Fail;
 
-    std::chrono::milliseconds _currentMSeconds;
+    std::chrono::milliseconds currentMSeconds_;
 
     // How long the close has taken, expressed as a percentage of the time that
     // we expected it to take.
-    int _closePercent;
+    int closePercent_;
 
-    NetClock::duration _closeResolution;
+    NetClock::duration closeResolution_;
 
-    bool _haveCloseTimeConsensus;
+    bool haveCloseTimeConsensus_;
 
-    std::chrono::steady_clock::time_point   _consensusStartTime;
-    int _previousProposers;
+    std::chrono::steady_clock::time_point   consensus_StartTime;
+    int previousProposers_;
 
     // The time it took for the last consensus process to converge
-    std::chrono::milliseconds _previousMSeconds;
+    std::chrono::milliseconds previousMSeconds_;
 
     // Convergence tracking, trusted peers indexed by hash of public key
-    hash_map<NodeID, LedgerProposal::pointer>  _peerPositions;
+    hash_map<NodeID, LedgerProposal::pointer>  peerPositions_;
 
     // Transaction Sets, indexed by hash of transaction tree
-    hash_map<uint256, std::shared_ptr<SHAMap>> _acquired;
+    hash_map<uint256, std::shared_ptr<SHAMap>> acquired_;
 
     // Disputed transactions
-    hash_map<uint256, std::shared_ptr <DisputedTx>> _disputes;
-    hash_set<uint256> _compares;
+    hash_map<uint256, std::shared_ptr <DisputedTx>> disputes_;
+    hash_set<uint256> compares_;
 
     // Close time estimates, keep ordered for predictable traverse
-    std::map<NetClock::time_point, int> _closeTimes;
+    std::map<NetClock::time_point, int> closeTime_s;
 
     // nodes that have bowed out of this consensus process
-    hash_set<NodeID> _deadNodes;
-    beast::Journal _j;
+    hash_set<NodeID> deadNodes_;
+    beast::Journal j_;
 };
 
 //------------------------------------------------------------------------------
