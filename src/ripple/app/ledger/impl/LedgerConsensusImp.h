@@ -366,6 +366,24 @@ make_LedgerConsensus (
     LedgerMaster& ledgerMaster,
     FeeVote& feeVote);
 
+//------------------------------------------------------------------------------
+/** Apply a set of transactions to a ledger
+
+  Typically the txFilter is used to reject transactions
+  that already got in the prior ledger
+
+  @param set                   The set of transactions to apply
+  @param view                  ledger to apply transaction to
+  @param txFilter              rule to reject unwanted txns
+  @return                      retriable transactions
+*/
+CanonicalTXSet
+applyTransactions (
+    Application& app,
+    SHAMap const& set,
+    OpenView& view,
+    std::function<bool(uint256 const&)> txFilter);
+
 } // ripple
 
 #endif

@@ -848,8 +848,11 @@ void LedgerConsensusImp::accept (std::shared_ptr<SHAMap> set)
             else
             {
                 // Normal case, we are not replaying a ledger close
-                applyTransactions (_app, set.get(), accum,
-                    *buildLCL, retriableTxs, tapNONE);
+                retriableTxs = applyTransactions (_app, *set, accum,
+                    [&buildLCL](uint256 const& txID)
+                    {
+                        return ! buildLCL->txExists(txID);
+                    });
             }
             // Update fee computations.
             _app.getTxQ().processValidatedLedger(_app, accum,
@@ -1776,41 +1779,39 @@ make_LedgerConsensus (
 
 //------------------------------------------------------------------------------
 
-void applyTransactions (
+CanonicalTXSet
+applyTransactions (
     Application& app,
-    SHAMap const* set,
+    SHAMap const& set,
     OpenView& view,
-    ReadView const& checkLedger,
-    CanonicalTXSet& retriableTxs,
-    ApplyFlags flags)
+    std::function<bool(uint256 const&)> txFilter)
 {
-
     auto j = app.journal ("LedgerConsensus");
-    if (set)
+
+    CanonicalTXSet retriableTxs (set.getHash().as_uint256());
+
+    for (auto const& item : set)
     {
-        for (auto const& item : *set)
+        if (! txFilter (item.key()))
+            continue;
+
+        // The transaction isn't in the check ledger, try to apply it
+        JLOG (j.debug()) <<
+            "Processing candidate transaction: " << item.key();
+        std::shared_ptr<STTx const> txn;
+        try
         {
-            if (checkLedger.txExists (item.key()))
-                continue;
+            txn = std::make_shared<STTx const>(SerialIter{item.slice()});
+        }
+        catch (std::exception const&)
+        {
+            JLOG (j.warn()) << "  Throws";
+        }
 
-            // The transaction isn't in the check ledger, try to apply it
-            JLOG (j.debug()) <<
-                "Processing candidate transaction: " << item.key();
-            std::shared_ptr<STTx const> txn;
-            try
-            {
-                txn = std::make_shared<STTx const>(SerialIter{item.slice()});
-            }
-            catch (std::exception const&)
-            {
-                JLOG (j.warn()) << "  Throws";
-            }
-
-            if (txn)
-            {
-                // All transactions execute in canonical order
-                retriableTxs.insert (txn);
-            }
+        if (txn)
+        {
+            // All transactions execute in canonical order
+            retriableTxs.insert (txn);
         }
     }
 
@@ -1830,7 +1831,7 @@ void applyTransactions (
             try
             {
                 switch (applyTransaction (app, view,
-                    *it->second, certainRetry, flags, j))
+                    *it->second, certainRetry, tapNO_CHECK_SIGN, j))
                 {
                 case ApplyResult::Success:
                     it = retriableTxs.erase (it);
@@ -1858,7 +1859,7 @@ void applyTransactions (
 
         // A non-retry pass made no changes
         if (!changes && !certainRetry)
-            return;
+            return retriableTxs;
 
         // Stop retriable passes
         if (!changes || (pass >= LEDGER_RETRY_PASSES))
@@ -1868,6 +1869,7 @@ void applyTransactions (
     // If there are any transactions left, we must have
     // tried them in at least one final pass
     assert (retriableTxs.empty() || !certainRetry);
+    return retriableTxs;
 }
 
 } // ripple

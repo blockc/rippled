@@ -74,26 +74,6 @@ public:
         boost::optional<std::chrono::milliseconds> consensusDelay) = 0;
 };
 
-//------------------------------------------------------------------------------
-/** Apply a set of transactions to a ledger
-
-  @param set                   The set of transactions to apply
-  @param applyLedger           The ledger to which the transactions should
-                               be applied.
-  @param checkLedger           A reference ledger for determining error
-                               messages (typically new last closed
-                               ledger).
-  @param retriableTransactions collect failed transactions in this set
-  @param openLgr               true if applyLedger is open, else false.
-*/
-void applyTransactions (
-    Application& app,
-    SHAMap const* set,
-    OpenView& view,
-    ReadView const& checkLedger,
-    CanonicalTXSet& retriableTransactions,
-    ApplyFlags flags);
-
 } // ripple
 
 #endif
