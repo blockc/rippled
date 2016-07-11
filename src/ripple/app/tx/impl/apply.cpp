@@ -130,7 +130,6 @@ applyTransaction (Application& app, OpenView& view,
         //<< (engine.view().open() ? " open" : " closed")
         // because of the optional in engine
         << (retryAssured ? "/retry" : "/final");
-    JLOG (j.trace()) << txn.getJson (0);
 
     try
     {

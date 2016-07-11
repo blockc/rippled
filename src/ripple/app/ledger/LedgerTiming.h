@@ -23,6 +23,7 @@
 #include <chrono>
 #include <cstdint>
 #include <ripple/basics/chrono.h>
+#include <ripple/beast/utility/Journal.h>
 
 namespace ripple {
 
