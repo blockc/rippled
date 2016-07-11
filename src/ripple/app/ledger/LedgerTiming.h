@@ -61,11 +61,10 @@ roundCloseTime (
     @param proposersClosed proposers who have currently closed this ledger
     @param proposersValidated proposers who have validated the last closed
                               ledger
-    @param previousMSeconds time, in milliseconds, for the previous ledger to
-                            reach consensus (in milliseconds)
-    @param currentMSeconds time, in milliseconds, since the previous ledger's
+    @param previousTime time for the previous ledger to reach consensus
+    @param currentTime  time since the previous ledger's
                            (possibly rounded) close time
-    @param openMSeconds time, in milliseconds, waiting to close this ledger
+    @param openTime     time waiting to close this ledger
     @param idleInterval the network's desired idle interval
 */
 bool
@@ -74,9 +73,9 @@ shouldCloseLedger (
     int previousProposers,
     int proposersClosed,
     int proposersValidated,
-    std::chrono::milliseconds previousMSeconds,
-    std::chrono::milliseconds currentMSeconds, // Time since last ledger's close time
-    std::chrono::milliseconds openMSeconds,    // Time waiting to close this ledger
+    std::chrono::milliseconds previousTime,
+    std::chrono::milliseconds currentTime, // Time since last ledger's close time
+    std::chrono::milliseconds openTime,    // Time waiting to close this ledger
     std::chrono::seconds idleInterval,
     beast::Journal j);
 

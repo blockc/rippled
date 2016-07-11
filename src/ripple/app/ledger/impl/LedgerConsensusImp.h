@@ -321,7 +321,8 @@ private:
     SecretKey valSecret_;
     bool proposing_, validating_, haveCorrectLCL_, consensus_Fail;
 
-    std::chrono::milliseconds currentMSeconds_;
+    // How much time has elapsed since the round started
+    std::chrono::milliseconds roundTime_;
 
     // How long the close has taken, expressed as a percentage of the time that
     // we expected it to take.
@@ -334,8 +335,8 @@ private:
     std::chrono::steady_clock::time_point   consensus_StartTime;
     int previousProposers_;
 
-    // The time it took for the last consensus process to converge
-    std::chrono::milliseconds previousMSeconds_;
+    // Time it took for the last consensus round to converge
+    std::chrono::milliseconds previousRoundTime_;
 
     // Convergence tracking, trusted peers indexed by hash of public key
     hash_map<NodeID, LedgerProposal::pointer>  peerPositions_;

@@ -71,13 +71,13 @@ LedgerConsensusImp::LedgerConsensusImp (
     , valPublic_ (app_.config().VALIDATION_PUB)
     , valSecret_ (app_.config().VALIDATION_PRIV)
     , consensus_Fail (false)
-    , currentMSeconds_ (0)
+    , roundTime_ (0)
     , closePercent_ (0)
     , closeResolution_ (30)
     , haveCloseTimeConsensus_ (false)
     , consensus_StartTime (std::chrono::steady_clock::now ())
     , previousProposers_ (0)
-    , previousMSeconds_ (0)
+    , previousRoundTime_ (0)
     , j_ (app.journal ("LedgerConsensus"))
 {
     JLOG (j_.debug()) << "Creating consensus object";
@@ -131,12 +131,13 @@ Json::Value LedgerConsensusImp::getJson (bool full)
     if (full)
     {
         using Int = Json::Value::Int;
-        ret["current_ms"] = static_cast<Int>(currentMSeconds_.count());
+        ret["current_ms"] = static_cast<Int>(roundTime_.count());
         ret["close_percent"] = closePercent_;
         ret["close_resolution"] = closeResolution_.count();
         ret["have_timeconsensus_"] = haveCloseTimeConsensus_;
         ret["previous_proposers"] = previousProposers_;
-        ret["previous_mseconds"] = static_cast<Int>(previousMSeconds_.count());
+        ret["previous_mseconds"] =
+            static_cast<Int>(previousRoundTime_.count());
 
         if (! peerPositions_.empty ())
         {
@@ -211,7 +212,7 @@ uint256 LedgerConsensusImp::getLCL ()
 //
 // We store it, notify peers that we have it,
 // and update our tracking if any validators currently
-// propose it/
+// propose it
 void LedgerConsensusImp::mapCompleteInternal (
     uint256 const& hash,
     std::shared_ptr<SHAMap> const& map,
@@ -479,7 +480,7 @@ void LedgerConsensusImp::handleLCL (uint256 const& lclHash)
         buildLCL,
         closeTime_,
         previousProposers_,
-        previousMSeconds_);
+        previousRoundTime_);
     proposing_ = false;
 }
 
@@ -493,12 +494,12 @@ void LedgerConsensusImp::timerEntry ()
            checkLCL ();
 
         using namespace std::chrono;
-        currentMSeconds_ = duration_cast<milliseconds>
+        roundTime_ = duration_cast<milliseconds>
                            (steady_clock::now() - consensus_StartTime);
 
-        closePercent_ = currentMSeconds_ * 100 /
+        closePercent_ = roundTime_ * 100 /
             std::max<milliseconds> (
-                previousMSeconds_, AV_MIN_CONSENSUS_TIME);
+                previousRoundTime_, AV_MIN_CONSENSUS_TIME);
 
         switch (state_)
         {
@@ -571,7 +572,7 @@ void LedgerConsensusImp::statePreClose ()
     // Decide if we should close the ledger
     if (shouldCloseLedger (anyTransactions
         , previousProposers_, proposersClosed, proposersValidated
-        , previousMSeconds_, sinceClose, currentMSeconds_
+        , previousRoundTime_, sinceClose, roundTime_
         , idleInterval, app_.journal ("LedgerTiming")))
     {
         closeLedger ();
@@ -581,7 +582,7 @@ void LedgerConsensusImp::statePreClose ()
 void LedgerConsensusImp::stateEstablish ()
 {
     // Give everyone a chance to take an initial position
-    if (currentMSeconds_ < LEDGER_MIN_CONSENSUS)
+    if (roundTime_ < LEDGER_MIN_CONSENSUS)
         return;
 
     updateOurPositions ();
@@ -649,7 +650,7 @@ bool LedgerConsensusImp::haveConsensus ()
 
     // Determine if we actually have consensus or not
     auto ret = checkConsensus (previousProposers_, agree + disagree, agree,
-        currentValidations, previousMSeconds_, currentMSeconds_, proposing_,
+        currentValidations, previousRoundTime_, roundTime_, proposing_,
         app_.journal ("LedgerTiming"));
 
     if (ret == ConsensusState::No)
@@ -765,7 +766,7 @@ void LedgerConsensusImp::simulate (
 
     JLOG (j_.info()) << "Simulating consensus";
     closeLedger ();
-    currentMSeconds_ = consensusDelay.value_or(100ms);
+    roundTime_ = consensusDelay.value_or(100ms);
     beginAccept (true);
     JLOG (j_.info()) << "Simulation complete";
 }
@@ -856,7 +857,7 @@ void LedgerConsensusImp::accept (std::shared_ptr<SHAMap> set)
             }
             // Update fee computations.
             app_.getTxQ().processValidatedLedger(app_, accum,
-                currentMSeconds_ > 5s);
+                roundTime_ > 5s);
 
             accum.apply(*buildLCL);
         }
@@ -1324,7 +1325,7 @@ void LedgerConsensusImp::takeInitialPosition (
 
     for (auto& it : peerPositions_)
     {
-        uint256 set = it.second->getCurrentHash ();
+        uint256 const& set = it.second->getCurrentHash ();
 
         if (found.insert (set).second)
         {
@@ -1641,7 +1642,7 @@ void LedgerConsensusImp::beginAccept (bool synchronous)
         abort ();
     }
 
-    consensus_.newLCL (peerPositions_.size (), currentMSeconds_);
+    consensus_.newLCL (peerPositions_.size (), roundTime_);
 
     if (synchronous)
         accept (consensusSet);
@@ -1679,12 +1680,12 @@ void LedgerConsensusImp::startRound (
     previousLedger_ = prevLedger;
     ourPosition_.reset();
     consensus_Fail = false;
-    currentMSeconds_ = 0ms;
+    roundTime_ = 0ms;
     closePercent_ = 0;
     haveCloseTimeConsensus_ = false;
     consensus_StartTime = std::chrono::steady_clock::now();
     previousProposers_ = previousProposers;
-    previousMSeconds_ = previousConvergeTime;
+    previousRoundTime_ = previousConvergeTime;
     inboundTransactions_.newRound (previousLedger_->info().seq);
 
     peerPositions_.clear();

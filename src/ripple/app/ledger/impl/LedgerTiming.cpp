@@ -80,22 +80,22 @@ shouldCloseLedger (
     int previousProposers,
     int proposersClosed,
     int proposersValidated,
-    std::chrono::milliseconds previousMSeconds,
-    std::chrono::milliseconds currentMSeconds, // Time since last ledger's close time
-    std::chrono::milliseconds openMSeconds,    // Time waiting to close this ledger
+    std::chrono::milliseconds previousTime,
+    std::chrono::milliseconds currentTime, // Time since last ledger's close time
+    std::chrono::milliseconds openTime,    // Time waiting to close this ledger
     std::chrono::seconds idleInterval,
     beast::Journal j)
 {
     using namespace std::chrono_literals;
-    if ((previousMSeconds < -1s) || (previousMSeconds > 10min) ||
-        (currentMSeconds > 10min))
+    if ((previousTime < -1s) || (previousTime > 10min) ||
+        (currentTime > 10min))
     {
         // These are unexpected cases, we just close the ledger
         JLOG (j.warn()) <<
             "shouldCloseLedger Trans=" << (anyTransactions ? "yes" : "no") <<
             " Prop: " << previousProposers << "/" << proposersClosed <<
-            " Secs: " << currentMSeconds.count() << " (last: " <<
-            previousMSeconds.count() << ")";
+            " Secs: " << currentTime.count() << " (last: " <<
+            previousTime.count() << ")";
         return true;
     }
 
@@ -109,11 +109,11 @@ shouldCloseLedger (
     if (!anyTransactions)
     {
         // Only close at the end of the idle interval
-        return currentMSeconds >= idleInterval; // normal idle
+        return currentTime >= idleInterval; // normal idle
     }
 
     // Preserve minimum ledger open time
-    if (openMSeconds < LEDGER_MIN_CLOSE)
+    if (openTime < LEDGER_MIN_CLOSE)
     {
         JLOG (j.debug()) <<
             "Must wait minimum time before closing";
@@ -123,7 +123,7 @@ shouldCloseLedger (
     // Don't let this ledger close more than twice as fast as the previous
     // ledger reached consensus so that slower validators can slow down
     // the network
-    if (openMSeconds < (previousMSeconds / 2))
+    if (openTime < (previousTime / 2))
     {
         JLOG (j.debug()) <<
             "Ledger has not been open long enough";
