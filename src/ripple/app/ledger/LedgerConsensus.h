@@ -82,7 +82,7 @@ public:
                                be applied.
   @param checkLedger           A reference ledger for determining error
                                messages (typically new last closed
-                                ledger).
+                               ledger).
   @param retriableTransactions collect failed transactions in this set
   @param openLgr               true if applyLedger is open, else false.
 */
@@ -93,21 +93,6 @@ void applyTransactions (
     ReadView const& checkLedger,
     CanonicalTXSet& retriableTransactions,
     ApplyFlags flags);
-
-/** Apply a single transaction to a ledger
-  @param view                   The open view to apply to
-  @param txn                    The transaction to apply
-  @param retryAssured           True if another pass is assured
-  @param flags                  Flags for transactor
-  @return                       resultSuccess, resultFail or resultRetry
-*/
-int applyTransaction (
-    Application& app,
-    OpenView& view,
-    std::shared_ptr<STTx const> const& txn,
-    bool retryAssured,
-    ApplyFlags flags,
-    beast::Journal j);
 
 } // ripple
 

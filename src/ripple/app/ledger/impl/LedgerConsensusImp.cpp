@@ -843,7 +843,7 @@ void LedgerConsensusImp::accept (std::shared_ptr<SHAMap> set)
             {
                 // Special case, we are replaying a ledger close
                 for (auto& tx : replay->txns_)
-                    applyTransaction (_app, accum, tx.second, false, tapNO_CHECK_SIGN, _j);
+                    applyTransaction (_app, accum, *tx.second, false, tapNO_CHECK_SIGN, _j);
             }
             else
             {
@@ -1776,54 +1776,6 @@ make_LedgerConsensus (
 
 //------------------------------------------------------------------------------
 
-int
-applyTransaction (Application& app, OpenView& view,
-    std::shared_ptr<STTx const> const& txn,
-        bool retryAssured, ApplyFlags flags,
-            beast::Journal j)
-{
-    // Returns false if the transaction has need not be retried.
-    if (retryAssured)
-        flags = flags | tapRETRY;
-
-    JLOG (j.debug()) << "TXN "
-        << txn->getTransactionID ()
-        //<< (engine.view().open() ? " open" : " closed")
-        // because of the optional in engine
-        << (retryAssured ? "/retry" : "/final");
-    JLOG (j.trace()) << txn->getJson (0);
-
-    try
-    {
-        auto const result = apply(app,
-            view, *txn, flags, j);
-        if (result.second)
-        {
-            JLOG (j.debug())
-                << "Transaction applied: " << transHuman (result.first);
-            return LedgerConsensusImp::resultSuccess;
-        }
-
-        if (isTefFailure (result.first) || isTemMalformed (result.first) ||
-            isTelLocal (result.first))
-        {
-            // failure
-            JLOG (j.debug())
-                << "Transaction failure: " << transHuman (result.first);
-            return LedgerConsensusImp::resultFail;
-        }
-
-        JLOG (j.debug())
-            << "Transaction retry: " << transHuman (result.first);
-        return LedgerConsensusImp::resultRetry;
-    }
-    catch (std::exception const&)
-    {
-        JLOG (j.warn()) << "Throws";
-        return LedgerConsensusImp::resultFail;
-    }
-}
-
 void applyTransactions (
     Application& app,
     SHAMap const* set,
@@ -1878,18 +1830,18 @@ void applyTransactions (
             try
             {
                 switch (applyTransaction (app, view,
-                    it->second, certainRetry, flags, j))
+                    *it->second, certainRetry, flags, j))
                 {
-                case LedgerConsensusImp::resultSuccess:
+                case ApplyResult::Success:
                     it = retriableTxs.erase (it);
                     ++changes;
                     break;
 
-                case LedgerConsensusImp::resultFail:
+                case ApplyResult::Fail:
                     it = retriableTxs.erase (it);
                     break;
 
-                case LedgerConsensusImp::resultRetry:
+                case ApplyResult::Retry:
                     ++it;
                 }
             }
