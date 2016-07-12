@@ -66,6 +66,7 @@ roundCloseTime (
                            (possibly rounded) close time
     @param openTime     time waiting to close this ledger
     @param idleInterval the network's desired idle interval
+    @param j            journal for logging
 */
 bool
 shouldCloseLedger (
@@ -110,6 +111,8 @@ enum class ConsensusState
                              last ledger
     @param currentAgreeTime how long, in milliseconds, we've been trying to
                             agree
+    @param proposing        whether we should count ourselves
+    @param j                journal for logging
 */
 ConsensusState
 checkConsensus (

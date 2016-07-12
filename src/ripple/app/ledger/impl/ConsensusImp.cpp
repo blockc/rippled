@@ -177,11 +177,11 @@ ConsensusImp::takePosition (int seq, std::shared_ptr<SHAMap> const& position)
     }
 }
 
-std::vector <LedgerProposal::pointer>
+std::vector <std::shared_ptr <LedgerProposal>>
 ConsensusImp::getStoredProposals (uint256 const& prevLedger)
 {
 
-    std::vector <LedgerProposal::pointer> ret;
+    std::vector <std::shared_ptr <LedgerProposal>> ret;
 
     {
         std::lock_guard <std::mutex> _(lock_);

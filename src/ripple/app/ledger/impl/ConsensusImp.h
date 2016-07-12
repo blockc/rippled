@@ -96,7 +96,7 @@ public:
 
     void takePosition (int seq, std::shared_ptr<SHAMap> const& position);
 
-    std::vector<LedgerProposal::pointer>
+    std::vector <std::shared_ptr <LedgerProposal>>
     getStoredProposals (uint256 const& previousLedger);
 
 private:

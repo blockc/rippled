@@ -70,12 +70,12 @@ LedgerConsensusImp::LedgerConsensusImp (
     , closeTime_ {}
     , valPublic_ (app_.config().VALIDATION_PUB)
     , valSecret_ (app_.config().VALIDATION_PRIV)
-    , consensus_Fail (false)
+    , consensusFail_ (false)
     , roundTime_ (0)
     , closePercent_ (0)
     , closeResolution_ (30)
     , haveCloseTimeConsensus_ (false)
-    , consensus_StartTime (std::chrono::steady_clock::now ())
+    , consensusStartTime_ (std::chrono::steady_clock::now ())
     , previousProposers_ (0)
     , previousRoundTime_ (0)
     , j_ (app.journal ("LedgerConsensus"))
@@ -174,10 +174,10 @@ Json::Value LedgerConsensusImp::getJson (bool full)
             ret["disputes"] = std::move(dsj);
         }
 
-        if (! closeTime_s.empty ())
+        if (! closeTimes_.empty ())
         {
             Json::Value ctj (Json::objectValue);
-            for (auto& ct : closeTime_s)
+            for (auto& ct : closeTimes_)
             {
                 ctj[std::to_string(ct.first.time_since_epoch().count())] = ct.second;
             }
@@ -435,7 +435,7 @@ void LedgerConsensusImp::handleLCL (uint256 const& lclHash)
         peerPositions_.clear ();
         disputes_.clear ();
         compares_.clear ();
-        closeTime_s.clear ();
+        closeTimes_.clear ();
         deadNodes_.clear ();
         // To get back in sync:
         playbackProposals ();
@@ -495,7 +495,7 @@ void LedgerConsensusImp::timerEntry ()
 
         using namespace std::chrono;
         roundTime_ = duration_cast<milliseconds>
-                           (steady_clock::now() - consensus_StartTime);
+                           (steady_clock::now() - consensusStartTime_);
 
         closePercent_ = roundTime_ * 100 /
             std::max<milliseconds> (
@@ -658,10 +658,7 @@ bool LedgerConsensusImp::haveConsensus ()
 
     // There is consensus, but we need to track if the network moved on
     // without us.
-    if (ret == ConsensusState::MovedOn)
-        consensus_Fail = true;
-    else
-        consensus_Fail = false;
+    consensusFail_ = (ret == ConsensusState::MovedOn);
 
     return true;
 }
@@ -734,7 +731,7 @@ bool LedgerConsensusImp::peerPosition (LedgerProposal::ref newPosition)
         JLOG (j_.trace())
             << "Peer reports close time as "
             << newPosition->getCloseTime().time_since_epoch().count();
-        ++closeTime_s[newPosition->getCloseTime()];
+        ++closeTimes_[newPosition->getCloseTime()];
     }
 
     JLOG (j_.trace()) << "Processing peer proposal "
@@ -804,7 +801,7 @@ void LedgerConsensusImp::accept (std::shared_ptr<SHAMap> set)
         << "Report: Prop=" << (proposing_ ? "yes" : "no")
         << " val=" << (validating_ ? "yes" : "no")
         << " corLCL=" << (haveCorrectLCL_ ? "yes" : "no")
-        << " fail=" << (consensus_Fail ? "yes" : "no");
+        << " fail=" << (consensusFail_ ? "yes" : "no");
     JLOG (j_.debug())
         << "Report: Prev = " << prevLedgerHash_
         << ":" << previousLedger_->info().seq;
@@ -914,7 +911,7 @@ void LedgerConsensusImp::accept (std::shared_ptr<SHAMap> set)
         validating_ = false;
     }
 
-    if (validating_ && ! consensus_Fail)
+    if (validating_ && ! consensusFail_)
     {
         // Build validation
         auto v = std::make_shared<STValidation> (newLCLHash,
@@ -1032,7 +1029,7 @@ void LedgerConsensusImp::accept (std::shared_ptr<SHAMap> set)
         usec64_t closeTotal = closeTime_.time_since_epoch();
         int closeCount = 1;
 
-        for (auto const& p : closeTime_s)
+        for (auto const& p : closeTimes_)
         {
             // FIXME: Use median, not average
             JLOG (j_.info())
@@ -1584,7 +1581,7 @@ void LedgerConsensusImp::closeLedger ()
 {
     checkOurValidation ();
     state_ = State::establish;
-    consensus_StartTime = std::chrono::steady_clock::now ();
+    consensusStartTime_ = std::chrono::steady_clock::now ();
     closeTime_ = app_.timeKeeper().closeTime();
     consensus_.setLastCloseTime(closeTime_);
     statusChange (protocol::neCLOSING_LEDGER, *previousLedger_);
@@ -1679,11 +1676,11 @@ void LedgerConsensusImp::startRound (
     prevLedgerHash_ = prevLCLHash;
     previousLedger_ = prevLedger;
     ourPosition_.reset();
-    consensus_Fail = false;
+    consensusFail_ = false;
     roundTime_ = 0ms;
     closePercent_ = 0;
     haveCloseTimeConsensus_ = false;
-    consensus_StartTime = std::chrono::steady_clock::now();
+    consensusStartTime_ = std::chrono::steady_clock::now();
     previousProposers_ = previousProposers;
     previousRoundTime_ = previousConvergeTime;
     inboundTransactions_.newRound (previousLedger_->info().seq);
@@ -1692,7 +1689,7 @@ void LedgerConsensusImp::startRound (
     acquired_.clear();
     disputes_.clear();
     compares_.clear();
-    closeTime_s.clear();
+    closeTimes_.clear();
     deadNodes_.clear();
 
     closeResolution_ = getNextLedgerTimeResolution (
@@ -1796,23 +1793,18 @@ applyTransactions (
         if (! txFilter (item.key()))
             continue;
 
-        // The transaction isn't in the check ledger, try to apply it
+        // The transaction wan't filtered
+        // Add it to the set to be tried in canonical order
         JLOG (j.debug()) <<
             "Processing candidate transaction: " << item.key();
-        std::shared_ptr<STTx const> txn;
         try
         {
-            txn = std::make_shared<STTx const>(SerialIter{item.slice()});
+            retriableTxs.insert (
+                std::make_shared<STTx const>(SerialIter{item.slice()}));
         }
         catch (std::exception const&)
         {
-            JLOG (j.warn()) << "  Throws";
-        }
-
-        if (txn)
-        {
-            // All transactions execute in canonical order
-            retriableTxs.insert (txn);
+            JLOG (j.warn()) << "Txn " << item.key() << " throws";
         }
     }
 

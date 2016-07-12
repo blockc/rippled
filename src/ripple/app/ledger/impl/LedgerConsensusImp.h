@@ -319,7 +319,7 @@ private:
     LedgerProposal::pointer ourPosition_;
     PublicKey valPublic_;
     SecretKey valSecret_;
-    bool proposing_, validating_, haveCorrectLCL_, consensus_Fail;
+    bool proposing_, validating_, haveCorrectLCL_, consensusFail_;
 
     // How much time has elapsed since the round started
     std::chrono::milliseconds roundTime_;
@@ -332,7 +332,7 @@ private:
 
     bool haveCloseTimeConsensus_;
 
-    std::chrono::steady_clock::time_point   consensus_StartTime;
+    std::chrono::steady_clock::time_point consensusStartTime_;
     int previousProposers_;
 
     // Time it took for the last consensus round to converge
@@ -349,7 +349,7 @@ private:
     hash_set<uint256> compares_;
 
     // Close time estimates, keep ordered for predictable traverse
-    std::map<NetClock::time_point, int> closeTime_s;
+    std::map<NetClock::time_point, int> closeTimes_;
 
     // nodes that have bowed out of this consensus process
     hash_set<NodeID> deadNodes_;
@@ -373,10 +373,10 @@ make_LedgerConsensus (
   Typically the txFilter is used to reject transactions
   that already got in the prior ledger
 
-  @param set                   The set of transactions to apply
-  @param view                  ledger to apply transaction to
-  @param txFilter              rule to reject unwanted txns
-  @return                      retriable transactions
+  @param set            set of transactions to apply
+  @param view           ledger to apply to
+  @param txFilter       callback, return false to reject txn
+  @return               retriable transactions
 */
 CanonicalTXSet
 applyTransactions (

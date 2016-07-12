@@ -111,7 +111,7 @@ enum class ApplyResult
 */
 ApplyResult
 applyTransaction(Application& app, OpenView& view,
-    STTx const& tx, bool retryAssured, ApplyFlags falgs,
+    STTx const& tx, bool retryAssured, ApplyFlags flags,
     beast::Journal journal);
 
 } // ripple
