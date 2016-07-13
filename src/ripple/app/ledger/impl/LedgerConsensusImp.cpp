@@ -234,16 +234,17 @@ void LedgerConsensusImp::mapCompleteInternal (
 
     assert (hash == map->getHash ().as_uint256());
 
-    auto it = acquired_.find (hash);
-
     // If we have already acquired this transaction set
-    if (it != acquired_.end ())
     {
-        if (it->second)
-            return; // we already have this map
+        auto it = acquired_.find (hash);
+        if (it != acquired_.end ())
+        {
+            if (it->second)
+                return; // we already have this map
 
-        // We previously failed to acquire this map, now we have it
-        acquired_.erase (hash);
+            // We previously failed to acquire this map, now we have it
+            acquired_.erase (hash);
+        }
     }
 
     // We now have a map that we did not have before
@@ -261,16 +262,16 @@ void LedgerConsensusImp::mapCompleteInternal (
         && (hash != ourPosition_->getCurrentHash ()))
     {
         // this will create disputed transactions
-        auto it2 = acquired_.find (ourPosition_->getCurrentHash ());
+        auto it = acquired_.find (ourPosition_->getCurrentHash ());
 
-        if (it2 == acquired_.end())
+        if (it == acquired_.end())
             LogicError ("We cannot find our own position!");
 
-        assert ((it2->first == ourPosition_->getCurrentHash ())
-            && it2->second);
+        assert ((it->first == ourPosition_->getCurrentHash ())
+            && it->second);
         compares_.insert(hash);
         // Our position is not the same as the acquired position
-        createDisputes (it2->second, map);
+        createDisputes (it->second, map);
     }
     else if (! ourPosition_)
     {
@@ -1387,25 +1388,26 @@ void LedgerConsensusImp::updateOurPositions ()
 
     // Verify freshness of peer positions and compute close times
     std::map<NetClock::time_point, int> closeTimes;
-    auto it = peerPositions_.begin ();
-
-    while (it != peerPositions_.end ())
     {
-        if (it->second->isStale (peerCutoff))
+        auto it = peerPositions_.begin ();
+        while (it != peerPositions_.end ())
         {
-            // peer's proposal is stale, so remove it
-            auto const& peerID = it->second->getPeerID ();
-            JLOG (j_.warn())
-                << "Removing stale proposal from " << peerID;
-            for (auto& dt : disputes_)
-                dt.second->unVote (peerID);
-            it = peerPositions_.erase (it);
-        }
-        else
-        {
-            // proposal is still fresh
-            ++closeTimes[effectiveCloseTime(it->second->getCloseTime())];
-            ++it;
+            if (it->second->isStale (peerCutoff))
+            {
+                // peer's proposal is stale, so remove it
+                auto const& peerID = it->second->getPeerID ();
+                JLOG (j_.warn())
+                    << "Removing stale proposal from " << peerID;
+                for (auto& dt : disputes_)
+                    dt.second->unVote (peerID);
+                it = peerPositions_.erase (it);
+            }
+            else
+            {
+                // proposal is still fresh
+                ++closeTimes[effectiveCloseTime(it->second->getCloseTime())];
+                ++it;
+            }
         }
     }
 

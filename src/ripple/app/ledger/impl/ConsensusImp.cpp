@@ -188,7 +188,7 @@ ConsensusImp::getStoredProposals (uint256 const& prevLedger)
 
         for (auto const& it : storedProposals_)
             for (auto const& prop : it.second)
-                if (prop->isPrevLedger (prevLedger))
+                if (prop->getPrevLedger() == prevLedger)
                     ret.push_back (prop);
     }
 
