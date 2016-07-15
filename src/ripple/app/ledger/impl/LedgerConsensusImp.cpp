@@ -218,6 +218,30 @@ void LedgerConsensusImp::mapCompleteInternal (
     std::shared_ptr<SHAMap> const& map,
     bool acquired)
 {
+    {
+        auto it = acquired_.find (hash);
+        if (it != acquired_.end ())
+        {
+            // We have already acquired (or proven invalid) this transaction set
+            if (map && ! it->second)
+            {
+                JLOG (j_.warn()) << "Map " << hash << " proven invalid then acquired";
+                assert (false);
+            }
+            else if (it->second && ! map)
+            {
+                JLOG (j_.warn()) << "Map " << hash << " acquired then proven invalid";
+                assert (false);
+                return;
+            }
+            else
+            {
+                // nothing to do
+                return;
+            }
+        }
+    }
+
     if (acquired)
     {
         JLOG (j_.trace()) << "We have acquired txs " << hash;
@@ -233,19 +257,6 @@ void LedgerConsensusImp::mapCompleteInternal (
     }
 
     assert (hash == map->getHash ().as_uint256());
-
-    // If we have already acquired this transaction set
-    {
-        auto it = acquired_.find (hash);
-        if (it != acquired_.end ())
-        {
-            if (it->second)
-                return; // we already have this map
-
-            // We previously failed to acquire this map, now we have it
-            acquired_.erase (hash);
-        }
-    }
 
     // We now have a map that we did not have before
 
